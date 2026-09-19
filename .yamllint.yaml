@@ -1,0 +1,19 @@
+---
+# Helm chart templates use Go templating and are not valid YAML until rendered.
+extends: default
+
+ignore: |
+  parsops-chart/templates/
+
+rules:
+  # Chart.yaml / values.yaml conventionally omit document start markers
+  document-start: disable
+  # Long comment URLs and descriptions are common in Helm values
+  line-length: disable
+  # Example keys under empty maps/lists are often indented as future content
+  comments-indentation: disable
+  comments:
+    require-starting-space: true
+  braces:
+    max-spaces-inside: 1
+    max-spaces-inside-empty: 0
