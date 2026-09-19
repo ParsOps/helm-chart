@@ -1,0 +1,145 @@
+{{- if .Values.volumes }}
+{{- range .Values.volumes }}
+---
+{{- if eq .type "configMap" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "parsops-chart.labels" $ | nindent 4 }}
+    {{- with .labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  {{- with .data }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- if .binaryData }}
+binaryData:
+  {{- with .binaryData }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{- if eq .type "secret" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "parsops-chart.labels" $ | nindent 4 }}
+    {{- with .labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+type: {{ .secretType | default "Opaque" }}
+{{- if .data }}
+data:
+  {{- with .data }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- end }}
+{{- if .stringData }}
+stringData:
+  {{- with .stringData }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{- if eq .type "persistentVolumeClaim" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "parsops-chart.labels" $ | nindent 4 }}
+    {{- with .labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- toYaml .accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .storage }}
+  {{- if .storageClassName }}
+  storageClassName: {{ .storageClassName }}
+  {{- end }}
+  {{- if .selector }}
+  selector:
+    {{- toYaml .selector | nindent 4 }}
+  {{- end }}
+  {{- if .volumeName }}
+  volumeName: {{ .volumeName }}
+  {{- end }}
+{{- end }}
+
+{{- if eq .type "persistentVolume" }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "parsops-chart.labels" $ | nindent 4 }}
+    {{- with .labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  capacity:
+    storage: {{ .storage }}
+  accessModes:
+    {{- toYaml .accessModes | nindent 4 }}
+  persistentVolumeReclaimPolicy: {{ .reclaimPolicy | default "Retain" }}
+  {{- if .storageClassName }}
+  storageClassName: {{ .storageClassName }}
+  {{- end }}
+  {{- if .hostPath }}
+  hostPath:
+    path: {{ .hostPath.path }}
+    {{- if .hostPath.type }}
+    type: {{ .hostPath.type }}
+    {{- end }}
+  {{- end }}
+  {{- if .nfs }}
+  nfs:
+    server: {{ .nfs.server }}
+    path: {{ .nfs.path }}
+    {{- if .nfs.readOnly }}
+    readOnly: {{ .nfs.readOnly }}
+    {{- end }}
+  {{- end }}
+  {{- if .csi }}
+  csi:
+    {{- toYaml .csi | nindent 4 }}
+  {{- end }}
+  {{- if .local }}
+  local:
+    path: {{ .local.path }}
+  nodeAffinity:
+    {{- toYaml .nodeAffinity | nindent 4 }}
+  {{- end }}
+{{- end }}
+
+{{- end }}
+{{- end }}

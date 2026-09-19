@@ -1,0 +1,187 @@
+{{- if .Values.statefulset.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "parsops-chart.fullname" . }}
+  labels:
+    {{- include "parsops-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ .Values.global.component }}
+    app.kubernetes.io/part-of: {{ .Values.global.partOf }}
+spec:
+  serviceName: {{ include "parsops-chart.fullname" . }}-headless
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "parsops-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "parsops-chart.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.global.imagePullSecrets | default .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "parsops-chart.serviceAccountName" . }}
+      {{- if or .Values.global.podSecurityContext .Values.podSecurityContext }}
+      securityContext:
+        {{- if .Values.global.podSecurityContext }}
+        {{- toYaml .Values.global.podSecurityContext | nindent 8 }}
+        {{- else if .Values.podSecurityContext }}
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- toYaml .Values.initContainers | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- range .Values.containers }}
+        - name: {{ .name }}
+          image: "{{ if and .image .image.repository }}{{ .image.repository }}{{ else }}{{ $.Values.global.image.repository }}{{ end }}:{{ if and .image .image.tag }}{{ .image.tag }}{{ else }}{{ $.Values.global.image.tag }}{{ end }}"
+          imagePullPolicy: "{{ if and .image .image.pullPolicy }}{{ .image.pullPolicy }}{{ else }}{{ $.Values.global.image.pullPolicy }}{{ end }}"
+          {{- if .command }}
+          command:
+            {{- toYaml .command | nindent 12 }}
+          {{- end }}
+          {{- if .args }}
+          args:
+            {{- toYaml .args | nindent 12 }}
+          {{- end }}
+          {{- if .ports }}
+          ports:
+            {{- range .ports }}
+            - name: {{ .name }}
+              containerPort: {{ .containerPort }}
+              protocol: {{ .protocol }}
+            {{- end }}
+          {{- end }}
+          {{- if .env }}
+          env:
+            {{- toYaml .env | nindent 12 }}
+          {{- end }}
+          {{- if or .envFrom (and .existingConfigMap .existingConfigMap.name) }}
+          envFrom:
+            {{- if .envFrom }}
+            {{- range .envFrom.configMaps }}
+            - configMapRef:
+                name: {{ .name }}
+                {{- if .optional }}
+                optional: {{ .optional }}
+                {{- end }}
+            {{- end }}
+            {{- range .envFrom.secrets }}
+            - secretRef:
+                name: {{ .name }}
+                {{- if .optional }}
+                optional: {{ .optional }}
+                {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if and .existingConfigMap .existingConfigMap.name }}
+            - configMapRef:
+                name: {{ .existingConfigMap.name }}
+                {{- if .existingConfigMap.optional }}
+                optional: {{ .existingConfigMap.optional }}
+                {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- if .livenessProbe }}
+          livenessProbe:
+            {{- toYaml .livenessProbe | nindent 12 }}
+          {{- else if $.Values.global.livenessProbe }}
+          livenessProbe:
+            {{- toYaml $.Values.global.livenessProbe | nindent 12 }}
+          {{- else if $.Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml $.Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .readinessProbe }}
+          readinessProbe:
+            {{- toYaml .readinessProbe | nindent 12 }}
+          {{- else if $.Values.global.readinessProbe }}
+          readinessProbe:
+            {{- toYaml $.Values.global.readinessProbe | nindent 12 }}
+          {{- else if $.Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml $.Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .resources }}
+          resources:
+            {{- toYaml .resources | nindent 12 }}
+          {{- else if $.Values.global.resources }}
+          resources:
+            {{- toYaml $.Values.global.resources | nindent 12 }}
+          {{- end }}
+          {{- if .volumeMounts }}
+          volumeMounts:
+            {{- toYaml .volumeMounts | nindent 12 }}
+          {{- end }}
+          {{- if .securityContext }}
+          securityContext:
+            {{- toYaml .securityContext | nindent 12 }}
+          {{- end }}
+        {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.nodeSelector | default .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.affinity | default .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.tolerations | default .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.statefulset.volumeClaimTemplates }}
+  volumeClaimTemplates:
+    {{- range .Values.statefulset.volumeClaimTemplates }}
+    - metadata:
+        name: {{ .metadata.name }}
+        {{- with .metadata.labels }}
+        labels:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .metadata.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .spec.accessModes | nindent 10 }}
+        resources:
+          requests:
+            storage: {{ .spec.resources.requests.storage }}
+        {{- if .spec.storageClassName }}
+        storageClassName: {{ .spec.storageClassName }}
+        {{- end }}
+        {{- if .spec.selector }}
+        selector:
+          {{- toYaml .spec.selector | nindent 10 }}
+        {{- end }}
+        {{- if .spec.volumeMode }}
+        volumeMode: {{ .spec.volumeMode }}
+        {{- end }}
+        {{- if .spec.dataSource }}
+        dataSource:
+          {{- toYaml .spec.dataSource | nindent 10 }}
+        {{- end }}
+        {{- if .spec.dataSourceRef }}
+        dataSourceRef:
+          {{- toYaml .spec.dataSourceRef | nindent 10 }}
+        {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}

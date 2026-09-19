@@ -1,0 +1,56 @@
+{{- if .Values.services }}
+  {{- range .Values.services }}
+    {{- if .enabled }}
+      {{- $serviceType := .type }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "parsops-chart.labels" $ | nindent 4 }}
+spec:
+  type: {{ .type }}
+  ports:
+    {{- range .ports }}
+    - port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      {{- if and .nodePort (or (eq $serviceType "NodePort") (eq $serviceType "LoadBalancer")) }}
+      nodePort: {{ .nodePort }}
+      {{- end }}
+      protocol: {{ .protocol | default "TCP" }}
+      name: {{ .name }}
+    {{- end }}
+  selector:
+    {{- include "parsops-chart.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ .selector.component }}
+    {{- end }}
+  {{- end }}
+{{- else }}
+  {{- if .Values.service.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $.Values.service.name | default (include "parsops-chart.fullname" .) }}
+  labels:
+    {{- include "parsops-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    {{- range .Values.service.ports }}
+    - port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      {{- if and .nodePort (or (eq $.Values.service.type "NodePort") (eq $.Values.service.type "LoadBalancer")) }}
+      nodePort: {{ .nodePort }}
+      {{- end }}
+      protocol: {{ .protocol | default "TCP" }}
+      name: {{ .name }}
+    {{- end }}
+  selector:
+    {{- include "parsops-chart.selectorLabels" . | nindent 4 }}
+    {{- if .Values.service.selector.component }}
+    app.kubernetes.io/component: {{ .Values.service.selector.component }}
+    {{- end }}
+  {{- end }}
+{{- end }}

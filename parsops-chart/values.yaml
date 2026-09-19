@@ -1,0 +1,353 @@
+# Default values for parsops-chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global configuration values that apply to the entire chart
+global:
+  # This sets the component type for Kubernetes labels
+  component: "backend"
+  # This sets the part-of label for Kubernetes resources
+  partOf: "parsops"
+  # Default image settings that can be overridden at the container level
+  image:
+    repository: nginx
+    # This sets the pull policy for images.
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  # This is for the secretes for pulling an image from a private repository
+  # More information: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  imagePullSecrets: []
+  # This is to override the chart name.
+  nameOverride: ""
+  fullnameOverride: ""
+  # Pod-level security context
+  # This applies to all containers in the pod
+  podSecurityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+  # Default resource limits and requests
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  # Default probe configurations that can be used by all containers
+  livenessProbe: {}
+  #   grpc:
+  #     port: 8100
+  #     service: ''
+  #   initialDelaySeconds: 30
+  #   timeoutSeconds: 1
+  #   periodSeconds: 10
+  #   successThreshold: 1
+  #   failureThreshold: 3
+  readinessProbe: {}
+  #   grpc:
+  #     port: 8100
+  #     service: ''
+  #   initialDelaySeconds: 5
+  #   timeoutSeconds: 1
+  #   periodSeconds: 10
+  #   successThreshold: 1
+  #   failureThreshold: 3
+  # Node assignment configuration
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+#################################################################
+#  NEW: Multi-Deployment Format (Optional)                      #
+#  To use this, comment out 'replicaCount' & 'containers' below #
+#  and uncomment this 'deployments' block.                      #
+#################################################################
+# deployments:
+#   app:
+#     replicaCount: 2
+#     container:
+#       name: web-app
+#       image:
+#         repository: my-app
+#         tag: 1.2.3
+#       ports:
+#         - name: http
+#           containerPort: 8080
+#
+#   worker:
+#     replicaCount: 1
+#     container:
+#       name: background-worker
+#       command: ["./run-worker"]
+
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+replicaCount: 1
+
+# Containers configuration
+containers:
+  - name: main
+    image:
+      repository: busybox
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    # Optional command override
+    command: ["/bin/sh", "-c"]
+    # Optional args
+    args: ["echo 'Hello from main container'"]
+    livenessProbe:
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - "echo 'Hello from main container'"
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+    readinessProbe:
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - "echo 'Hello from main container'"
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+    # Environment variables
+    env:
+      - name: LOG_LEVEL
+        value: "INFO"
+      - name: SERVICE_PORT
+        value: "8080"
+      - name: DB_HOST
+        valueFrom:
+          configMapKeyRef:
+            name: database-config
+            key: db_host
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: password
+    # Multiple environment sources
+    envFrom:
+      configMaps:
+        - name: common-config
+          optional: true
+        - name: app-specific-config
+          optional: false
+      secrets:
+        - name: common-secrets
+          optional: false
+        - name: app-secrets
+          optional: true
+    ports:
+      - name: http
+        containerPort: 8080
+        protocol: TCP
+      - name: metrics
+        containerPort: 9090
+        protocol: TCP
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      capabilities:
+        drop:
+          - ALL
+    # Container specific ConfigMap
+    existingConfigMap:
+      name: "parsops-allocation-services-config"
+      optional: false
+  # - name: sidecar
+  #   image:
+  #     repository: nginx
+  #     tag: latest
+  #     pullPolicy: IfNotPresent
+  #   # Optional command override
+  #   command: ["/bin/sh", "-c"]
+  #   # Optional args
+  #   args: ["nginx -g 'daemon off;'"]
+  #   # Environment variables
+  #   env:
+  #     - name: NGINX_PORT
+  #       value: "80"
+  #     - name: NGINX_HOST
+  #       value: "localhost"
+  #   ports:
+  #     - name: http
+  #       containerPort: 80
+  #       protocol: TCP
+  #   resources:
+  #     limits:
+  #       cpu: 100m
+  #       memory: 128Mi
+  #     requests:
+  #       cpu: 100m
+  #       memory: 128Mi
+  #   securityContext:
+  #     runAsNonRoot: true
+  #     runAsUser: 1001
+  #   Container specific ConfigMap
+  #   existingConfigMap:
+  #     name: "sidecar-config"
+  #     optional: false
+
+# This is for setting Kubernetes Annotations to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+# --- NEW Multi-Service Mode (Recommended) ---
+# Defines a list of services to create. This gives you maximum flexibility.
+# By default, this list is empty. Uncomment and configure to use this mode.
+# services: []
+  # Example for creating a gateway and an internal application service:
+  # - name: parsops-customer-gateway-svc
+  #   enabled: true
+  #   type: NodePort
+  #   selector:
+  #     # This should target the labels of your Envoy/router pods
+  #     component: parsops-customer-router
+  #   ports:
+  #     - name: grpc-web
+  #       port: 9100
+  #       targetPort: 9100
+  #       nodePort: 30110
+  #       protocol: TCP
+  #
+  # - name: parsops-customer-serve-svc
+  #   enabled: true
+  #   type: ClusterIP
+  #   selector:
+  #     # This should target the labels of your backend application pods
+  #     component: parsops-customer-service
+  #   ports:
+  #     - name: grpc
+  #       port: 8100
+  #       targetPort: 8100
+  #       protocol: TCP
+
+
+# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+service:
+  # Enable or disable service creation
+  enabled: false
+  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  type: ClusterIP
+  name: ""
+  # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
+  # ports:
+  #   - name: http
+  #     port: 8080
+  #     targetPort: 8080
+  #     protocol: TCP
+  #   - name: metrics
+  #     port: 9090
+  #     targetPort: 9090
+  #     protocol: TCP
+  # --- Selector for Multi-Deployment Mode ---
+  # When using the 'deployments' block to create multiple deployments,
+  # you MUST specify which component this service should target.
+  # Uncomment the 'component' line and set it to the name of the deployment
+  # you want to expose (e.g., "api-server").
+  # For the default single-deployment mode, this can be left as is.
+  # selector: {}
+  #   component: ""
+
+# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# StatefulSet configuration
+# More information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/
+statefulset:
+  # Enable or disable StatefulSet deployment (when disabled, uses Deployment instead)
+  enabled: false
+  # Service name for the StatefulSet headless service
+  serviceName: ""
+  # Volume claim templates for persistent storage
+  # Uncomment and configure if you need persistent storage for each pod
+  # volumeClaimTemplates:
+  #   - metadata:
+  #       name: data
+  #     spec:
+  #       accessModes: ["ReadWriteOnce"]
+  #       resources:
+  #         requests:
+  #           storage: 1Gi
+  #       storageClassName: "standard"
+
+# Additional volumes on the output Deployment definition.
+volumes:
+  - name: config-volume
+    emptyDir: {}
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+# initContainers configuration
+initContainers: []
+#   - name: init-container
+#     image: busybox:latest
+#     imagePullPolicy: IfNotPresent
+#     command: ["sh", "-c", "echo 'Init container'"]
+#     volumeMounts:
+#       - name: config-volume
+#         mountPath: /etc/config
+#     envFrom:
+#       - configMapRef:
+#           name: example-config
+#           optional: false
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""

@@ -1,0 +1,242 @@
+{{- if .Values.deployments }}
+{{- range $name, $deployment := .Values.deployments }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "parsops-chart.fullname" $ }}-{{ $name }}
+  labels:
+    {{- include "parsops-chart.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  {{- if not $.Values.autoscaling.enabled }}
+  replicas: {{ $deployment.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "parsops-chart.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $name }}
+  template:
+    metadata:
+      {{- with $.Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "parsops-chart.selectorLabels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $name }}
+    spec:
+      {{- with $.Values.global.imagePullSecrets | default $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "parsops-chart.serviceAccountName" $ }}
+      {{- with $.Values.global.podSecurityContext | default $.Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $deployment.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ $deployment.container.name }}
+          image: "{{ if and $deployment.container.image $deployment.container.image.repository }}{{ $deployment.container.image.repository }}{{ else }}{{ $.Values.global.image.repository }}{{ end }}:{{ if and $deployment.container.image $deployment.container.image.tag }}{{ $deployment.container.image.tag }}{{ else }}{{ $.Values.global.image.tag }}{{ end }}"
+          imagePullPolicy: "{{ if and $deployment.container.image $deployment.container.image.pullPolicy }}{{ $deployment.container.image.pullPolicy }}{{ else }}{{ $.Values.global.image.pullPolicy }}{{ end }}"
+          {{- with $deployment.container.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $deployment.container.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $deployment.container.ports }}
+          ports:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $deployment.container.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if $deployment.container.envFrom }}
+          envFrom:
+            {{- if $deployment.container.envFrom.configMaps }}
+            {{- range $deployment.container.envFrom.configMaps }}
+            - configMapRef:
+                name: {{ .name }}
+                {{- if .optional }}
+                optional: {{ .optional }}
+                {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if $deployment.container.envFrom.secrets }}
+            {{- range $deployment.container.envFrom.secrets }}
+            - secretRef:
+                name: {{ .name }}
+                {{- if .optional }}
+                optional: {{ .optional }}
+                {{- end }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- with $deployment.container.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $deployment.container.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $deployment.container.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if or $deployment.container.volumeMounts $deployment.extraVolumeMounts }}
+          volumeMounts:
+            {{- with $deployment.container.volumeMounts }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with $deployment.extraVolumeMounts }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+
+{{- end }}
+{{- else }}
+{{- if not .Values.statefulset.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "parsops-chart.fullname" . }}
+  labels:
+    {{- include "parsops-chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ .Values.global.component | default "default" }}
+    app.kubernetes.io/part-of: {{ .Values.global.partOf | default "parsops" }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "parsops-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "parsops-chart.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.global.imagePullSecrets | default .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "parsops-chart.serviceAccountName" . }}
+      {{- if or .Values.global.podSecurityContext .Values.podSecurityContext }}
+      securityContext:
+        {{- if .Values.global.podSecurityContext }}
+        {{- toYaml .Values.global.podSecurityContext | nindent 8 }}
+        {{- else if .Values.podSecurityContext }}
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- toYaml .Values.initContainers | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- range .Values.containers }}
+        - name: {{ .name }}
+          image: "{{ if and .image .image.repository }}{{ .image.repository }}{{ else }}{{ $.Values.global.image.repository }}{{ end }}:{{ if and .image .image.tag }}{{ .image.tag }}{{ else }}{{ $.Values.global.image.tag }}{{ end }}"
+          imagePullPolicy: "{{ if and .image .image.pullPolicy }}{{ .image.pullPolicy }}{{ else }}{{ $.Values.global.image.pullPolicy }}{{ end }}"
+          {{- if .command }}
+          command:
+            {{- toYaml .command | nindent 12 }}
+          {{- end }}
+          {{- if .args }}
+          args:
+            {{- toYaml .args | nindent 12 }}
+          {{- end }}
+          {{- if .ports }}
+          ports:
+            {{- toYaml .ports | nindent 12 }}
+          {{- end }}
+          {{- if .env }}
+          env:
+            {{- toYaml .env | nindent 12 }}
+          {{- end }}
+          {{- if or .envFrom (and .existingConfigMap .existingConfigMap.name) }}
+          envFrom:
+            {{- if .envFrom }}
+            {{- range .envFrom.configMaps }}
+            - configMapRef:
+                name: {{ .name }}
+                {{- if .optional }}
+                optional: {{ .optional }}
+                {{- end }}
+            {{- end }}
+            {{- range .envFrom.secrets }}
+            - secretRef:
+                name: {{ .name }}
+                {{- if .optional }}
+                optional: {{ .optional }}
+                {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if and .existingConfigMap .existingConfigMap.name }}
+            - configMapRef:
+                name: {{ .existingConfigMap.name }}
+                {{- if .existingConfigMap.optional }}
+                optional: {{ .existingConfigMap.optional }}
+                {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- if .livenessProbe }}
+          livenessProbe:
+            {{- toYaml .livenessProbe | nindent 12 }}
+          {{- else if $.Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml $.Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .readinessProbe }}
+          readinessProbe:
+            {{- toYaml .readinessProbe | nindent 12 }}
+          {{- else if $.Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml $.Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .resources }}
+          resources:
+            {{- toYaml .resources | nindent 12 }}
+          {{- else if $.Values.global.resources }}
+          resources:
+            {{- toYaml $.Values.global.resources | nindent 12 }}
+          {{- end }}
+          {{- if .volumeMounts }}
+          volumeMounts:
+            {{- toYaml .volumeMounts | nindent 12 }}
+          {{- end }}
+        {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.nodeSelector | default .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.affinity | default .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.tolerations | default .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}
