@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  parsops-chart:
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2026-09-21T07:15:54.319869676+03:30"
+      description: A Helm chart for Kubernetes
+      digest: 837827d10a9a80cd212ce7488a9c649f2c8e17eb1562275d5906e15a5ab49bca
+      name: parsops-chart
+      type: application
+      urls:
+        - https://chart.parsops.github.com/parsops-chart-1.0.0.tgz
+      version: 1.0.0
+generated: "2026-09-21T07:15:54.319165044+03:30"
