@@ -35,14 +35,9 @@ spec:
             {{- end }}
             backend:
               service:
-                name: {{ .service }}
+                name: {{ .service | default ($.Values.service.name | default (include "parsops-chart.fullname" $)) }}
                 port:
-                  {{- if .service.port }}
-                  number: {{ .service.port }}
-                  {{- end }}
-                  {{- else }}
-                  number: 80
-                  {{- end }}
+                  number: {{ .port | default 80 }}
           {{- end }}
     {{- end }}
 {{- end }}
