@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+vars:
+  GREETING: Hello, world!
+
+tasks:
+  default:
+    desc: Print a greeting message
+    cmds:
+      - helm dependency update ./parsops-chart
+      - helm lint ./parsops-chart
+      - helm template test-release ./parsops-chart
+      - mkdir -p docs
+      - helm package ./parsops-chart --destination docs
+      - helm repo index docs --url https://chart.parsops.github.com/
+    silent: true
