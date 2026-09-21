@@ -9,7 +9,42 @@ It supports Deployments and StatefulSets, multiple containers, Services, Ingress
 - Kubernetes 1.19+
 - Helm 3+
 
-## Install
+## Install from the Helm repository
+
+Add the ParsOps Helm repository:
+
+```bash
+helm repo add parsops https://chart.parsops.com/
+helm repo update
+```
+
+Install the chart:
+
+```bash
+helm install my-release parsops/parsops-chart
+```
+
+To install a specific chart version:
+
+```bash
+helm install my-release parsops/parsops-chart --version 0.1.30
+```
+
+Use your own values file:
+
+```bash
+helm install my-release parsops/parsops-chart -f my-values.yaml
+```
+
+Search available charts and versions:
+
+```bash
+helm search repo parsops --versions
+```
+
+## Install from the local chart source
+
+For local development or testing:
 
 ```bash
 helm install my-release ./parsops-chart
@@ -23,6 +58,15 @@ helm install my-release ./parsops-chart -f my-values.yaml
 
 ## Upgrade
 
+From the published repository:
+
+```bash
+helm repo update
+helm upgrade my-release parsops/parsops-chart -f my-values.yaml
+```
+
+From the local chart source:
+
 ```bash
 helm upgrade my-release ./parsops-chart -f my-values.yaml
 ```
@@ -32,6 +76,14 @@ helm upgrade my-release ./parsops-chart -f my-values.yaml
 ```bash
 helm uninstall my-release
 ```
+
+## Published repository
+
+The chart repository is hosted at:
+
+<https://chart.parsops.com/>
+
+The Helm repository must expose `index.yaml` and packaged chart archives such as `parsops-chart-0.1.30.tgz` at this URL.
 
 ## What you can configure
 
