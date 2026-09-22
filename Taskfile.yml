@@ -14,5 +14,5 @@ tasks:
       - helm template test-release ./parsops-chart
       - mkdir -p docs
       - helm package ./parsops-chart --destination docs
-      - helm repo index docs --url https://chart.parsops.github.com/
+      - helm repo index docs --url https://chart.parsops.com/
     silent: true
